@@ -1,0 +1,3 @@
+# the-tale-of-slime
+
+Yet another boring game...
