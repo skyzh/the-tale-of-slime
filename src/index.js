@@ -37,9 +37,10 @@ class Game {
         this.shoot = false
         this.weapon_type = 0
         this.mouse_pos = new PIXI.Point(0, 0)
-        
+
         // Skills
         this.skill_zen_mode = false
+        this.skill_power_mode = false
 
         // Slimes
         this.slimes = []
@@ -129,7 +130,7 @@ class Game {
         margin = margin || 0
         const left_top_corner = this.transform_to_map_space(new PIXI.Point(0, 0))
         return new PIXI.Rectangle(left_top_corner.x - margin, left_top_corner.y - margin,
-                                  WIDTH + margin * 2, HEIGHT + margin * 2)
+            WIDTH + margin * 2, HEIGHT + margin * 2)
     }
 
     generate_bullet_of_type_0() {
@@ -159,13 +160,13 @@ class Game {
         }
     }
 
-    generate_bullet_of_type_2() {
+    generate_bullet_of_type_2(_speed) {
         this.__bullet_2_fi = this.__bullet_2_fi || 0
         this.__bullet_2_fi = (this.__bullet_2_fi + 15) % 360
         const angles_deg = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324]
         const mouse_pos = this.transform_to_map_space(this.mouse_pos)
         const zero_angle = Math.atan2(mouse_pos.y - this.hero_location.y, mouse_pos.x - this.hero_location.x)
-        const speed = 20
+        const speed = _speed || 20
         for (let angle of angles_deg) {
             const target_angle = zero_angle + (angle + this.__bullet_2_fi) / 180 * Math.PI
             const sprite = new Bullet(this.stage)
@@ -183,12 +184,12 @@ class Game {
             if (this.weapon_type == 0) {
                 this.generate_bullet_of_type_0()
             } else if (this.weapon_type == 1) {
-                if (this.current_frame % 5 == 0) this.generate_bullet_of_type_1()
+                if (this.current_frame % 5 == 0 || this.skill_power_mode) this.generate_bullet_of_type_1()
             } else if (this.weapon_type == 2) {
-                if (this.current_frame % 10 == 0) this.generate_bullet_of_type_2()
+                if (this.current_frame % 10 == 0 || this.skill_power_mode) this.generate_bullet_of_type_2()
             }
         }
-        const map_box = this.get_map_box(20)
+        const map_box = this.get_map_box(500)
         for (let i = 0; i < this.bullets.length; i++) {
             this.bullets[i].sprite.update(this.transform_to_screen_space(this.bullets[i].position))
             this.bullets[i].position.x += this.bullets[i].velocity.x
@@ -201,6 +202,18 @@ class Game {
             }
             return true
         })
+    }
+
+    make_slime(position, radius, hp) {
+        const sprite = new Slime(this.stage, radius)
+        const slime = {
+            position,
+            sprite,
+            acc: new PIXI.Point(0, 0),
+            hp,
+            radius
+        }
+        return slime
     }
 
     generate_slime() {
@@ -216,14 +229,12 @@ class Game {
         } else if (location == 3) {
             position = new PIXI.Point(map_box.left + Math.random() * map_box.width, map_box.bottom)
         }
-        const sprite = new Slime(this.stage)
-        const slime = {
-            position,
-            sprite,
-            acc: new PIXI.Point(0, 0),
-            hp: 10
-        }
-        this.slimes.push(slime)
+        const rand = Math.random()
+        let radius = 0
+        if (rand < 0.1) radius = 80
+        else if (rand < 0.3) radius = 40
+        else radius = 20
+        this.slimes.push(this.make_slime(position, radius, 10))
     }
 
     /**
@@ -231,12 +242,12 @@ class Game {
      * @param {[PIXI.Point]} others 
      * @returns {Number}
      */
-    collision(individual, others) {
+    collision(individual, radius, others) {
         for (let i = 0; i < others.length; i++) {
             const dx = others[i].x - individual.x
             const dy = others[i].y - individual.y
             const dist_squared = dx * dx + dy * dy
-            if (dist_squared < 20 * 20) return i
+            if (dist_squared < radius * radius) return i
         }
         return -1
     }
@@ -254,6 +265,14 @@ class Game {
         this.animations.push(animation)
     }
 
+    /**
+     * @param {PIXI.Point} position 
+     * @param {Number} radius
+     */
+    rand_around(position, radius) {
+        return new PIXI.Point(position.x + Math.random() * radius * 2 - radius, position.y + Math.random() * radius * 2 - radius)
+    }
+
     update_slimes() {
         if (this.current_frame % 30 == 0) this.generate_slime()
 
@@ -265,7 +284,7 @@ class Game {
                 this.slimes[i].sprite.remove()
             }
             const velocity = this.get_vector(this.slimes[i].position, this.hero_location, 2)
-            
+
             velocity.x += this.slimes[i].acc.x
             velocity.y += this.slimes[i].acc.y
 
@@ -273,15 +292,16 @@ class Game {
             this.slimes[i].acc.x += acc_reduction.x
             this.slimes[i].acc.y += acc_reduction.y
 
-            
+
             this.slimes[i].position.x += velocity.x
             this.slimes[i].position.y += velocity.y
         }
         const bullets_position = this.bullets.map(b => b.position)
+        const new_slimes = []
         this.slimes = this.slimes.filter(slime => {
-            const collision_id = this.collision(slime.position, bullets_position)
+            const collision_id = this.collision(slime.position, slime.radius, bullets_position)
             if (collision_id != -1) {
-                const ACC_RATE = 0.3
+                const ACC_RATE = 0.3 / slime.radius * 20
                 slime.hp -= 1
                 this.make_bullet_bomb_animation(this.bullets[collision_id].position)
                 slime.acc.x += this.bullets[collision_id].velocity.x * ACC_RATE
@@ -292,10 +312,18 @@ class Game {
             }
             if (slime.hp <= 0) {
                 slime.sprite.remove()
+                if (slime.radius > 20) {
+                    for (let i = 0; i < 3; i++) {
+                        const s = this.make_slime(slime.position.clone(), slime.radius / 2, 10)
+                        s.acc = this.rand_around(slime.acc, 10)
+                        new_slimes.push(s)
+                    }
+                }
                 return false
             }
             return true
         })
+        this.slimes = this.slimes.concat(new_slimes)
     }
 
     update_skills() {
@@ -304,7 +332,13 @@ class Game {
                 this.skill_zen_mode = false
                 return
             }
-            this.generate_bullet_of_type_2()
+            this.generate_bullet_of_type_2(7)
+        }
+        if (this.skill_power_mode) {
+            if (this.current_frame - this.__power_mode_begin >= 180) {
+                this.skill_power_mode = false
+                return
+            }
         }
     }
 
@@ -359,6 +393,10 @@ class Game {
         if (e.code == "KeyX") {
             this.skill_zen_mode = true
             this.__zen_mode_begin = this.current_frame
+        }
+        if (e.code == "KeyC") {
+            this.skill_power_mode = true
+            this.__power_mode_begin = this.current_frame
         }
     }
 
