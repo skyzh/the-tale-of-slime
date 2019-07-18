@@ -211,13 +211,14 @@ class Game {
             sprite,
             acc: new PIXI.Point(0, 0),
             hp,
+            max_hp: hp,
             radius
         }
         return slime
     }
 
     generate_slime() {
-        const map_box = this.get_map_box(20)
+        const map_box = this.get_map_box(50)
         const location = Math.floor(Math.random() * 4)
         let position = null
         if (location == 0) {
@@ -234,7 +235,7 @@ class Game {
         if (rand < 0.1) radius = 80
         else if (rand < 0.3) radius = 40
         else radius = 20
-        this.slimes.push(this.make_slime(position, radius, 10))
+        this.slimes.push(this.make_slime(position, radius, 5))
     }
 
     /**
@@ -279,7 +280,7 @@ class Game {
         const map_box = this.get_map_box(50)
         for (let i = 0; i < this.slimes.length; i++) {
             if (map_box.contains(this.slimes[i].position.x, this.slimes[i].position.y)) {
-                this.slimes[i].sprite.update(this.transform_to_screen_space(this.slimes[i].position))
+                this.slimes[i].sprite.update(this.transform_to_screen_space(this.slimes[i].position), this.slimes[i].hp / this.slimes[i].max_hp)
             } else {
                 this.slimes[i].sprite.remove()
             }
@@ -314,7 +315,7 @@ class Game {
                 slime.sprite.remove()
                 if (slime.radius > 20) {
                     for (let i = 0; i < 3; i++) {
-                        const s = this.make_slime(slime.position.clone(), slime.radius / 2, 10)
+                        const s = this.make_slime(slime.position.clone(), slime.radius / 2, slime.max_hp)
                         s.acc = this.rand_around(slime.acc, 10)
                         new_slimes.push(s)
                     }
