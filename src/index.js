@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js'
-import { HeroWalker, Background, Ground, Hero, WalkerIndicator, Bullet, Slime, BulletIndicator } from './sprites'
+import { HeroWalker, Background, Ground, Hero, WalkerIndicator, Bullet, Slime, BulletIndicator, Flipflops } from './sprites'
 import { WIDTH, HEIGHT } from './common'
 import $ from 'jquery'
 
@@ -61,6 +61,9 @@ class Game {
 
         // Animations
         this.animations = []
+
+        // Others
+        this.flip_flops = new Flipflops(this.stage)
 
         // Basics
         this.current_frame = 0
@@ -356,6 +359,10 @@ class Game {
         }
     }
 
+    update_others() {
+        this.flip_flops.update(this.transform_to_screen_space(new PIXI.Point(-200, -200)))
+    }
+
     update() {
         this.update_hero()
         this.update_ground()
@@ -363,6 +370,7 @@ class Game {
         this.update_slimes()
         this.update_skills()
         this.update_animation()
+        this.update_others()
         this.current_frame += 1
     }
 
