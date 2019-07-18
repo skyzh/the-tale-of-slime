@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js'
-import { HeroWalker, Background, Ground, Hero, WalkerIndicator, Bullet } from './sprites'
+import { HeroWalker, Background, Ground, Hero, WalkerIndicator, Bullet, Slime } from './sprites'
 import { WIDTH, HEIGHT } from './common'
 import $ from 'jquery'
 
@@ -37,6 +37,9 @@ class Game {
         this.shoot = false
         this.weapon_type = 0
         this.mouse_pos = new PIXI.Point(0, 0)
+
+        // Slimes
+        this.slimes = []
 
         // Ground
         this.ground = new Ground(stage)
@@ -150,12 +153,34 @@ class Game {
         }
     }
 
+    generate_bullet_of_type_2() {
+        if (this.current_frame % 10 != 0) return
+        this.__bullet_2_fi = this.__bullet_2_fi || 0
+        this.__bullet_2_fi = (this.__bullet_2_fi + 15) % 360
+        const angles_deg = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324]
+        const mouse_pos = this.transform_to_map_space(this.mouse_pos)
+        const zero_angle = Math.atan2(mouse_pos.y - this.hero_location.y, mouse_pos.x - this.hero_location.x)
+        const speed = 20
+        for (let angle of angles_deg) {
+            const target_angle = zero_angle + (angle + this.__bullet_2_fi) / 180 * Math.PI
+            const sprite = new Bullet(this.stage)
+            const bullet = {
+                position: new PIXI.Point(this.hero_location.x, this.hero_location.y),
+                velocity: new PIXI.Point(Math.cos(target_angle) * speed, Math.sin(target_angle) * speed),
+                sprite
+            }
+            this.bullets.push(bullet)
+        }
+    }
+
     update_bullets() {
         if (this.shoot) {
             if (this.weapon_type == 0) {
                 this.generate_bullet_of_type_0()
             } else if (this.weapon_type == 1) {
                 this.generate_bullet_of_type_1()
+            } else if (this.weapon_type == 2) {
+                this.generate_bullet_of_type_2()
             }
         }
         const map_box = this.get_map_box(20)
@@ -173,10 +198,79 @@ class Game {
         })
     }
 
+    generate_slime() {
+        if (this.current_frame % 30 != 0) return
+        const map_box = this.get_map_box(20)
+        const location = Math.floor(Math.random() * 4)
+        let position = null
+        if (location == 0) {
+            position = new PIXI.Point(map_box.left, map_box.top + Math.random() * map_box.height)
+        } else if (location == 1) {
+            position = new PIXI.Point(map_box.right, map_box.top + Math.random() * map_box.height)
+        } else if (location == 2) {
+            position = new PIXI.Point(map_box.left + Math.random() * map_box.width, map_box.top)
+        } else if (location == 3) {
+            position = new PIXI.Point(map_box.left + Math.random() * map_box.width, map_box.bottom)
+        }
+        const sprite = new Slime(this.stage)
+        const slime = {
+            position,
+            sprite,
+            hp: 10
+        }
+        this.slimes.push(slime)
+    }
+
+    /**
+     * @param {PIXI.Point} individual 
+     * @param {[PIXI.Point]} others 
+     * @returns {Number}
+     */
+    collision(individual, others) {
+        for (let i = 0; i < others.length; i++) {
+            const dx = others[i].x - individual.x
+            const dy = others[i].y - individual.y
+            const dist_squared = dx * dx + dy * dy
+            if (dist_squared < 20 * 20) return i
+        }
+        return -1
+    }
+
+    update_slimes() {
+        this.generate_slime()
+        const map_box = this.get_map_box(50)
+        for (let i = 0; i < this.slimes.length; i++) {
+            if (map_box.contains(this.slimes[i].position.x, this.slimes[i].position.y)) {
+                this.slimes[i].sprite.update(this.transform_to_screen_space(this.slimes[i].position))
+            } else {
+                this.slimes[i].sprite.remove()
+            }
+            const velocity = this.get_vector(this.slimes[i].position, this.hero_location, 2)
+            this.slimes[i].position.x += velocity.x
+            this.slimes[i].position.y += velocity.y
+        }
+        const bullets_position = this.bullets.map(b => b.position)
+        this.slimes = this.slimes.filter(slime => {
+            const collision_id = this.collision(slime.position, bullets_position)
+            if (collision_id != -1) {
+                slime.hp -= 1
+                this.bullets[collision_id].sprite.remove()
+                this.bullets.splice(collision_id, 1)
+                bullets_position.splice(collision_id, 1)
+            }
+            if (slime.hp <= 0) {
+                slime.sprite.remove()
+                return false
+            }
+            return true
+        })
+    }
+
     update() {
         this.update_hero()
         this.update_ground()
         this.update_bullets()
+        this.update_slimes()
         this.current_frame += 1
     }
 
@@ -203,7 +297,7 @@ class Game {
             this.shoot = true
         }
         if (e.code == "KeyZ") {
-            this.weapon_type = (this.weapon_type + 1) % 2
+            this.weapon_type = (this.weapon_type + 1) % 3
         }
     }
 
