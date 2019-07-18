@@ -2,6 +2,8 @@
 
 Yet another boring game...
 
+Demo at [https://skyzh.github.io/the-tale-of-slime/](https://skyzh.github.io/the-tale-of-slime/)
+
 Click to move.
 
 Left Shift to use Weapon.
