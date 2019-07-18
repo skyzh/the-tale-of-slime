@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js'
-import { HeroWalker, Background, Ground, Hero, WalkerIndicator, Bullet, Slime } from './sprites'
+import { HeroWalker, Background, Ground, Hero, WalkerIndicator, Bullet, Slime, BulletIndicator } from './sprites'
 import { WIDTH, HEIGHT } from './common'
 import $ from 'jquery'
 
@@ -37,6 +37,9 @@ class Game {
         this.shoot = false
         this.weapon_type = 0
         this.mouse_pos = new PIXI.Point(0, 0)
+        
+        // Skills
+        this.skill_zen_mode = false
 
         // Slimes
         this.slimes = []
@@ -54,6 +57,9 @@ class Game {
         stage.on('mousemove', e => this.on_mousemove(e))
         $(document).on('keydown', e => this.on_keydown(e))
         $(document).on('keyup', e => this.on_keyup(e))
+
+        // Animations
+        this.animations = []
 
         // Basics
         this.current_frame = 0
@@ -108,10 +114,11 @@ class Game {
      * @param {Number} speed 
      * @returns {PIXI.Point}
      */
-    get_vector(from, to, speed) {
+    get_vector(from, to, speed, fix) {
         const dx = to.x - from.x
         const dy = to.y - from.y
         const r = Math.sqrt(dx * dx + dy * dy)
+        if (fix && r < speed) return new PIXI.Point(to.x, to.y)
         return new PIXI.Point(dx / r * speed, dy / r * speed)
     }
 
@@ -136,7 +143,6 @@ class Game {
     }
 
     generate_bullet_of_type_1() {
-        if (this.current_frame % 5 != 0) return
         const angles_deg = [-30, -15, 0, 15, 30]
         const mouse_pos = this.transform_to_map_space(this.mouse_pos)
         const zero_angle = Math.atan2(mouse_pos.y - this.hero_location.y, mouse_pos.x - this.hero_location.x)
@@ -154,7 +160,6 @@ class Game {
     }
 
     generate_bullet_of_type_2() {
-        if (this.current_frame % 10 != 0) return
         this.__bullet_2_fi = this.__bullet_2_fi || 0
         this.__bullet_2_fi = (this.__bullet_2_fi + 15) % 360
         const angles_deg = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324]
@@ -178,9 +183,9 @@ class Game {
             if (this.weapon_type == 0) {
                 this.generate_bullet_of_type_0()
             } else if (this.weapon_type == 1) {
-                this.generate_bullet_of_type_1()
+                if (this.current_frame % 5 == 0) this.generate_bullet_of_type_1()
             } else if (this.weapon_type == 2) {
-                this.generate_bullet_of_type_2()
+                if (this.current_frame % 10 == 0) this.generate_bullet_of_type_2()
             }
         }
         const map_box = this.get_map_box(20)
@@ -199,7 +204,6 @@ class Game {
     }
 
     generate_slime() {
-        if (this.current_frame % 30 != 0) return
         const map_box = this.get_map_box(20)
         const location = Math.floor(Math.random() * 4)
         let position = null
@@ -216,6 +220,7 @@ class Game {
         const slime = {
             position,
             sprite,
+            acc: new PIXI.Point(0, 0),
             hp: 10
         }
         this.slimes.push(slime)
@@ -236,8 +241,22 @@ class Game {
         return -1
     }
 
+    /**
+     * @param {PIXI.Point} position 
+     */
+    make_bullet_bomb_animation(position) {
+        const begin_frame = this.current_frame
+        const animation = {
+            sprite: new BulletIndicator(this.stage),
+            end: () => this.current_frame - begin_frame >= 10,
+            position
+        }
+        this.animations.push(animation)
+    }
+
     update_slimes() {
-        this.generate_slime()
+        if (this.current_frame % 30 == 0) this.generate_slime()
+
         const map_box = this.get_map_box(50)
         for (let i = 0; i < this.slimes.length; i++) {
             if (map_box.contains(this.slimes[i].position.x, this.slimes[i].position.y)) {
@@ -246,6 +265,15 @@ class Game {
                 this.slimes[i].sprite.remove()
             }
             const velocity = this.get_vector(this.slimes[i].position, this.hero_location, 2)
+            
+            velocity.x += this.slimes[i].acc.x
+            velocity.y += this.slimes[i].acc.y
+
+            const acc_reduction = this.get_vector(this.slimes[i].acc, new PIXI.Point(0, 0), 0.3, true)
+            this.slimes[i].acc.x += acc_reduction.x
+            this.slimes[i].acc.y += acc_reduction.y
+
+            
             this.slimes[i].position.x += velocity.x
             this.slimes[i].position.y += velocity.y
         }
@@ -253,7 +281,11 @@ class Game {
         this.slimes = this.slimes.filter(slime => {
             const collision_id = this.collision(slime.position, bullets_position)
             if (collision_id != -1) {
+                const ACC_RATE = 0.3
                 slime.hp -= 1
+                this.make_bullet_bomb_animation(this.bullets[collision_id].position)
+                slime.acc.x += this.bullets[collision_id].velocity.x * ACC_RATE
+                slime.acc.y += this.bullets[collision_id].velocity.y * ACC_RATE
                 this.bullets[collision_id].sprite.remove()
                 this.bullets.splice(collision_id, 1)
                 bullets_position.splice(collision_id, 1)
@@ -266,11 +298,36 @@ class Game {
         })
     }
 
+    update_skills() {
+        if (this.skill_zen_mode) {
+            if (this.current_frame - this.__zen_mode_begin >= 180) {
+                this.skill_zen_mode = false
+                return
+            }
+            this.generate_bullet_of_type_2()
+        }
+    }
+
+    update_animation() {
+        this.animations = this.animations.filter(animation => {
+            if (animation.end()) {
+                animation.sprite.remove()
+                return false
+            }
+            return true
+        })
+        for (let animation of this.animations) {
+            animation.sprite.update(this.transform_to_screen_space(animation.position))
+        }
+    }
+
     update() {
         this.update_hero()
         this.update_ground()
         this.update_bullets()
         this.update_slimes()
+        this.update_skills()
+        this.update_animation()
         this.current_frame += 1
     }
 
@@ -298,6 +355,10 @@ class Game {
         }
         if (e.code == "KeyZ") {
             this.weapon_type = (this.weapon_type + 1) % 3
+        }
+        if (e.code == "KeyX") {
+            this.skill_zen_mode = true
+            this.__zen_mode_begin = this.current_frame
         }
     }
 
