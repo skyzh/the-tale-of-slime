@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js'
-import { HeroWalker, Background, Ground, Hero, WalkerIndicator, Bullet, Slime, BulletIndicator, Flipflops } from './sprites'
+import { HeroWalker, Background, Ground, Hero, WalkerIndicator, Bullet, Slime, BulletIndicator, Flipflops, Tower } from './sprites'
 import { WIDTH, HEIGHT } from './common'
 import $ from 'jquery'
 
@@ -31,6 +31,7 @@ class Game {
         this.hero = new Hero(stage)
         this.hero_walker = null
         this.walker_indicator = null
+        this.move_disabled = false
 
         // Bullets
         this.bullets = []
@@ -47,6 +48,10 @@ class Game {
 
         // Ground
         this.ground = new Ground(stage)
+
+        // Tower
+        this.place_tower_mode = false
+        this.towers = []
 
         // Camera
         this.camera_center = new PIXI.Point(0, 0)
@@ -198,13 +203,7 @@ class Game {
             this.bullets[i].position.x += this.bullets[i].velocity.x
             this.bullets[i].position.y += this.bullets[i].velocity.y
         }
-        this.bullets = this.bullets.filter(bullet => {
-            if (!map_box.contains(bullet.position.x, bullet.position.y)) {
-                bullet.sprite.remove()
-                return false
-            }
-            return true
-        })
+        this.bullets = this.filter_out_sprites(this.bullets, map_box)
     }
 
     make_slime(position, radius, hp, giant) {
@@ -236,7 +235,7 @@ class Game {
         const rand = Math.random()
         let radius = 0
         let giant = false
-        if (rand < 0.01)  {
+        if (rand < 0.03)  {
             giant = true
             radius = 160
         } else if (rand < 0.1) radius = 80
@@ -248,16 +247,18 @@ class Game {
     /**
      * @param {PIXI.Point} individual 
      * @param {[PIXI.Point]} others 
-     * @returns {Number}
+     * @returns {[Number]}
      */
     collision(individual, radius, others) {
+        const collision_id = []
         for (let i = 0; i < others.length; i++) {
-            const dx = others[i].x - individual.x
-            const dy = others[i].y - individual.y
+            const other = others[i]
+            const dx = other.x - individual.x
+            const dy = other.y - individual.y
             const dist_squared = dx * dx + dy * dy
-            if (dist_squared < radius * radius) return i
+            if (dist_squared < radius * radius) collision_id.push(i)
         }
-        return -1
+        return collision_id
     }
 
     /**
@@ -307,8 +308,8 @@ class Game {
         const bullets_position = this.bullets.map(b => b.position)
         const new_slimes = []
         this.slimes = this.slimes.filter(slime => {
-            const collision_id = this.collision(slime.position, slime.radius, bullets_position)
-            if (collision_id != -1) {
+            const collision_ids = this.collision(slime.position, slime.radius, bullets_position)
+            collision_ids.reverse().forEach(collision_id => {
                 const ACC_RATE = 0.3 / slime.radius * 20
                 slime.hp -= 1
                 this.make_bullet_bomb_animation(this.bullets[collision_id].position)
@@ -317,7 +318,7 @@ class Game {
                 this.bullets[collision_id].sprite.remove()
                 this.bullets.splice(collision_id, 1)
                 bullets_position.splice(collision_id, 1)
-            }
+            })
             if (slime.hp <= 0) {
                 slime.sprite.remove()
                 if (slime.radius > 20) {
@@ -367,6 +368,24 @@ class Game {
         this.flip_flops.update(this.transform_to_screen_space(new PIXI.Point(-200, -200)))
     }
 
+    filter_out_sprites(elements, map_box) {
+        return elements.filter(element => {
+            if (!map_box.contains(element.position.x, element.position.y)) {
+                element.sprite.remove()
+                return false
+            }
+            return true
+        })
+    }
+
+    update_towers() {
+        const map_box = this.get_map_box(500)
+        for (let i = 0; i < this.towers.length; i++) {
+            this.towers[i].sprite.update(this.transform_to_screen_space(this.towers[i].position))
+        }
+        this.towers = this.filter_out_sprites(this.towers, map_box)
+    }
+
     update() {
         this.update_hero()
         this.update_ground()
@@ -375,6 +394,7 @@ class Game {
         this.update_skills()
         this.update_animation()
         this.update_others()
+        this.update_towers()
         this.current_frame += 1
     }
 
@@ -383,7 +403,25 @@ class Game {
      */
     on_click(e) {
         const target_pos = this.transform_to_map_space(e.data.global)
-        this.hero_walker = new HeroWalker(this.hero_location, target_pos)
+
+        if (!this.move_disabled) {
+            this.hero_walker = new HeroWalker(this.hero_location, target_pos)
+        }
+
+        if (this.place_tower_mode) {
+            this.place_tower_at(target_pos)
+        }
+    }
+
+    /**
+     * @param {PIXI.Point} target_pos 
+     */
+    place_tower_at(target_pos) {
+        const tower = {
+            position: target_pos,
+            sprite: new Tower(this.stage)
+        }
+        this.towers.push(tower)
     }
 
     /**
@@ -410,6 +448,10 @@ class Game {
         if (e.code == "KeyC") {
             this.skill_power_mode = true
             this.__power_mode_begin = this.current_frame
+        }
+        if (e.code == "KeyA") {
+            this.place_tower_mode = !this.place_tower_mode
+            this.move_disabled = !this.move_disabled
         }
     }
 

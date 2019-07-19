@@ -1,12 +1,14 @@
 import * as PIXI from 'pixi.js'
 
+const WALKER_INDICATOR_COLOR = 0xAA8F4E
+
 export class WalkerIndicator {
     /**
      * @returns {PIXI.Graphics}
      */
     make_indicator_sprite() {
         const sprite = new PIXI.Graphics
-        sprite.beginFill(0xcc0000)
+        sprite.beginFill(WALKER_INDICATOR_COLOR)
         sprite.drawCircle(0, 0, 5, 5)
         sprite.endFill()
         sprite.zIndex = -20
@@ -16,7 +18,7 @@ export class WalkerIndicator {
     update_indicator_sprite() {
         const radius = (this.current_frame / 3) % 7
         this.sprite.clear()
-        this.sprite.beginFill(0xcc0000)
+        this.sprite.beginFill(WALKER_INDICATOR_COLOR)
         this.sprite.drawCircle(0, 0, radius, radius)
         this.sprite.endFill()
     }

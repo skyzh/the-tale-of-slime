@@ -1,12 +1,14 @@
 import * as PIXI from 'pixi.js'
 
+const BULLET_INDICATOR_COLOR = 0x934734;
+
 export class BulletIndicator {
     /**
      * @returns {PIXI.Graphics}
      */
     make_indicator_sprite() {
         const sprite = new PIXI.Graphics
-        sprite.beginFill(0xff0000)
+        sprite.beginFill(BULLET_INDICATOR_COLOR)
         sprite.drawCircle(0, 0, 0, 0)
         sprite.endFill()
         sprite.zIndex = 2
@@ -17,7 +19,7 @@ export class BulletIndicator {
     update_indicator_sprite() {
         const radius = this.current_frame
         this.sprite.clear()
-        this.sprite.beginFill(0xff0000)
+        this.sprite.beginFill(BULLET_INDICATOR_COLOR)
         this.sprite.drawCircle(0, 0, radius, radius)
         this.sprite.endFill()
     }

@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js'
 
 const BLOOD_INDICATOR_WIDTH = 30
+const BLOOD_INDICATOR_COLOR = 0xE76F51
 
 export class Slime {
 
@@ -9,7 +10,7 @@ export class Slime {
      */
     make_blood_indicator() {
         const blood = new PIXI.Graphics
-        blood.beginFill(0xF7B05B)
+        blood.beginFill(BLOOD_INDICATOR_COLOR)
         blood.drawRoundedRect(0, 0, BLOOD_INDICATOR_WIDTH, 3, 1)
         blood.endFill()
         return blood
@@ -17,7 +18,7 @@ export class Slime {
 
     update_blood_indicator(blood_percentage) {
         this.blood_indicator.clear()
-        this.blood_indicator.beginFill(0xF7B05B)
+        this.blood_indicator.beginFill(BLOOD_INDICATOR_COLOR)
         this.blood_indicator.drawRoundedRect(0, 0, BLOOD_INDICATOR_WIDTH * blood_percentage, 3, 1)
         this.blood_indicator.endFill()
     }
@@ -28,7 +29,7 @@ export class Slime {
     make_slime_sprite() {
         const slime = new PIXI.Container
         const sprite = new PIXI.Graphics
-        sprite.beginFill(this.giant ? 0xff0f5f : 0x362C28)
+        sprite.beginFill(this.giant ? 0x9CAAB0 : 0x264653)
         sprite.drawCircle(0, 0, this.radius, this.radius)
         sprite.endFill()
         sprite.alpha = 0.7

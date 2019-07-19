@@ -6,7 +6,7 @@ export class Hero {
      */
     make_hero_sprite() {
         const sprite = new PIXI.Graphics
-        sprite.beginFill(0x8EB1C7)
+        sprite.beginFill(0xE9C46A)
         sprite.drawCircle(0, 0, 20, 20)
         sprite.endFill()
         return sprite
