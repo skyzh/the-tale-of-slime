@@ -207,8 +207,8 @@ class Game {
         })
     }
 
-    make_slime(position, radius, hp) {
-        const sprite = new Slime(this.stage, radius)
+    make_slime(position, radius, hp, giant) {
+        const sprite = new Slime(this.stage, radius, giant)
         const slime = {
             position,
             sprite,
@@ -235,10 +235,14 @@ class Game {
         }
         const rand = Math.random()
         let radius = 0
-        if (rand < 0.1) radius = 80
+        let giant = false
+        if (rand < 0.01)  {
+            giant = true
+            radius = 160
+        } else if (rand < 0.1) radius = 80
         else if (rand < 0.3) radius = 40
         else radius = 20
-        this.slimes.push(this.make_slime(position, radius, 5))
+        this.slimes.push(this.make_slime(position, radius, giant ? 500 : 5, giant))
     }
 
     /**
@@ -280,7 +284,7 @@ class Game {
     update_slimes() {
         if (this.current_frame % 30 == 0) this.generate_slime()
 
-        const map_box = this.get_map_box(50)
+        const map_box = this.get_map_box(200)
         for (let i = 0; i < this.slimes.length; i++) {
             if (map_box.contains(this.slimes[i].position.x, this.slimes[i].position.y)) {
                 this.slimes[i].sprite.update(this.transform_to_screen_space(this.slimes[i].position), this.slimes[i].hp / this.slimes[i].max_hp)
@@ -318,7 +322,7 @@ class Game {
                 slime.sprite.remove()
                 if (slime.radius > 20) {
                     for (let i = 0; i < 3; i++) {
-                        const s = this.make_slime(slime.position.clone(), slime.radius / 2, slime.max_hp)
+                        const s = this.make_slime(slime.position.clone(), slime.radius / 2, 10)
                         s.acc = this.rand_around(slime.acc, 10)
                         new_slimes.push(s)
                     }

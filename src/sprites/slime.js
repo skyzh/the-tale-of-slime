@@ -28,7 +28,7 @@ export class Slime {
     make_slime_sprite() {
         const slime = new PIXI.Container
         const sprite = new PIXI.Graphics
-        sprite.beginFill(0x362C28)
+        sprite.beginFill(this.giant ? 0xff0f5f : 0x362C28)
         sprite.drawCircle(0, 0, this.radius, this.radius)
         sprite.endFill()
         sprite.alpha = 0.7
@@ -45,11 +45,12 @@ export class Slime {
      * @param {PIXI.Container} stage 
      * @param {Number} radius
      */
-    constructor(stage, radius) {
+    constructor(stage, radius, giant) {
         this.stage = stage
         this.radius = radius
         this.in_stage = false
         this.blood_indicator = null
+        this.giant = giant
     }
 
     remove() {
