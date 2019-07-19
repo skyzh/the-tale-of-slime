@@ -10,12 +10,14 @@ Yet another boring game...
 
 Click to move.
 
-Left Shift to use Weapon.
+Left Shift to use weapon.
 
-Z to switch Weapon.
+Z to switch weapon.
 
 X to launch spell card.
 
-C to power up Weapon.
+C to power up weapon.
+
+A to enter tower placement mode.
 
 ## Assets

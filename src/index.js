@@ -209,7 +209,7 @@ class Game {
     make_slime(position, radius, hp, giant) {
         const sprite = new Slime(this.stage, radius, giant)
         const slime = {
-            position,
+            position: position.clone(),
             sprite,
             acc: new PIXI.Point(0, 0),
             hp,
@@ -235,7 +235,7 @@ class Game {
         const rand = Math.random()
         let radius = 0
         let giant = false
-        if (rand < 0.03)  {
+        if (rand < 0.01) {
             giant = true
             radius = 160
         } else if (rand < 0.1) radius = 80
@@ -323,7 +323,7 @@ class Game {
                 slime.sprite.remove()
                 if (slime.radius > 20) {
                     for (let i = 0; i < 3; i++) {
-                        const s = this.make_slime(slime.position.clone(), slime.radius / 2, 10)
+                        const s = this.make_slime(slime.position, slime.radius / 2, 10)
                         s.acc = this.rand_around(slime.acc, 10)
                         new_slimes.push(s)
                     }
@@ -378,12 +378,54 @@ class Game {
         })
     }
 
+    /**
+     * @param {PIXI.Point} target_pos 
+     */
+    place_tower_at(target_pos) {
+        const tower = {
+            position: target_pos,
+            sprite: new Tower(this.stage),
+            cooldown_cnt: 60,
+            cooldown: 60
+        }
+        this.towers.push(tower)
+    }
+
+
+    /**
+     * @param {PIXI.Point} position 
+     */
+    generate_tower_bullet(position) {
+        const angles_deg = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324]
+        const speed = 20
+        for (let angle of angles_deg) {
+            const target_angle = angle / 180 * Math.PI
+            const sprite = new Bullet(this.stage)
+            const bullet = {
+                position: position.clone(),
+                velocity: new PIXI.Point(Math.cos(target_angle) * speed, Math.sin(target_angle) * speed),
+                sprite
+            }
+            this.bullets.push(bullet)
+        }
+    }
+
     update_towers() {
         const map_box = this.get_map_box(500)
         for (let i = 0; i < this.towers.length; i++) {
-            this.towers[i].sprite.update(this.transform_to_screen_space(this.towers[i].position))
+            const tower = this.towers[i]
+            if (map_box.contains(tower.position.x, tower.position.y)) {
+                tower.sprite.update(this.transform_to_screen_space(tower.position),
+                    1 - tower.cooldown_cnt / tower.cooldown)
+                if (tower.cooldown_cnt == 0) {
+                    tower.cooldown_cnt = tower.cooldown
+                    this.generate_tower_bullet(tower.position)
+                }
+                tower.cooldown_cnt -= 1
+            } else {
+                tower.sprite.remove()
+            }
         }
-        this.towers = this.filter_out_sprites(this.towers, map_box)
     }
 
     update() {
@@ -411,17 +453,6 @@ class Game {
         if (this.place_tower_mode) {
             this.place_tower_at(target_pos)
         }
-    }
-
-    /**
-     * @param {PIXI.Point} target_pos 
-     */
-    place_tower_at(target_pos) {
-        const tower = {
-            position: target_pos,
-            sprite: new Tower(this.stage)
-        }
-        this.towers.push(tower)
     }
 
     /**
