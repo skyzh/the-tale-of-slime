@@ -1,16 +1,15 @@
 import * as PIXI from 'pixi.js'
 import { WIDTH, HEIGHT } from '../common'
 
-const GROUND_BLOCK = 100
+const GROUND_BLOCK_WIDTH = 512
+const GROUND_BLOCK_HEIGHT = 512
+
 export class Ground {
     /**
      * @returns {PIXI.Sprite}
      */
     make_ground_sprite(color) {
-        const sprite = new PIXI.Graphics
-        sprite.beginFill(color)
-        sprite.drawRect(0, 0, GROUND_BLOCK, GROUND_BLOCK)
-        sprite.endFill()
+        const sprite = PIXI.Sprite.from('assets/grass.png')
         sprite.zIndex = -100
         return sprite
     }
@@ -90,10 +89,10 @@ export class Ground {
      * @param {PIXI.Point} screen_position
      */
     update(screen_position) {
-        const x_begin = Math.floor((-screen_position.x) / GROUND_BLOCK) - 1
-        const x_end = Math.ceil((-screen_position.x + WIDTH) / GROUND_BLOCK) + 1
-        const y_begin = Math.floor((-screen_position.y) / GROUND_BLOCK) - 1
-        const y_end = Math.ceil((-screen_position.y + HEIGHT) / GROUND_BLOCK) + 1
+        const x_begin = Math.floor((-screen_position.x) / GROUND_BLOCK_WIDTH) - 1
+        const x_end = Math.ceil((-screen_position.x + WIDTH) / GROUND_BLOCK_WIDTH) + 1
+        const y_begin = Math.floor((-screen_position.y) / GROUND_BLOCK_HEIGHT) - 1
+        const y_end = Math.ceil((-screen_position.y + HEIGHT) / GROUND_BLOCK_HEIGHT) + 1
         if(this.swap_cnt % 10 == 0) {
             this.enter(x_begin, x_end, y_begin, y_end)
             this.exit(x_begin, x_end, y_begin, y_end)
@@ -102,8 +101,8 @@ export class Ground {
         for (let key in this.ground_sprites) {
             const ground = this.ground_sprites[key]
             const sprite = ground.sprite
-            sprite.x = screen_position.x + ground.x * GROUND_BLOCK
-            sprite.y = screen_position.y + ground.y * GROUND_BLOCK
+            sprite.x = screen_position.x + ground.x * GROUND_BLOCK_WIDTH
+            sprite.y = screen_position.y + ground.y * GROUND_BLOCK_HEIGHT
         }
     }
 }

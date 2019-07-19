@@ -17,3 +17,5 @@ Z to switch Weapon.
 X to launch spell card.
 
 C to power up Weapon.
+
+## Assets
